@@ -1,0 +1,54 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          lfs: false # CI checks code, not art — keep clones fast
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - run: npm ci
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Layering rules (CLAUDE.md §2)
+        run: npm run check:layers
+
+      - name: Tests
+        run: npm run test
+
+      - name: Build
+        run: npm run build
+
+      - name: Assert no secrets in the public bundle
+        run: |
+          # dist/ is served verbatim from a public static host. See CLAUDE.md §7.
+          if grep -rIqE "(api[_-]?key|secret|password|private[_-]?key)[\"' ]*[:=]" dist/; then
+            echo "::error::Possible secret found in dist/ — the bundle is public."
+            exit 1
+          fi
+          echo "No secret-shaped strings in dist/."
+
+      - name: Assert relative asset paths
+        run: |
+          # Absolute paths break when served from a subdirectory. See docs/deployment.md.
+          if grep -qE '(src|href)="/[^/]' dist/index.html; then
+            echo "::error::Absolute path in dist/index.html — base must stay relative."
+            exit 1
+          fi
+          echo "Asset paths are relative."

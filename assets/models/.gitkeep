@@ -1,0 +1,1 @@
+# Source models (.blend, .fbx) — Git LFS. Export to .glb via npm run assets:build.

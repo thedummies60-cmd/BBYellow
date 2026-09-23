@@ -1,0 +1,39 @@
+# Build output
+dist/
+build/
+.vite/
+*.tsbuildinfo
+
+# Dependencies
+node_modules/
+.pnp.*
+
+# Generated / optimized assets
+public/assets/generated/
+*.ktx2.tmp
+
+# Environment — never commit real values; the bundle is public
+.env
+.env.*
+!.env.example
+
+# Editors
+.vscode/*
+!.vscode/extensions.json
+.idea/
+*.swp
+.DS_Store
+Thumbs.db
+
+# Test & profiling output
+coverage/
+*.cpuprofile
+*.heapsnapshot
+test-results/
+
+# Logs
+*.log
+npm-debug.log*
+
+# Local Claude settings (shared settings.json IS committed)
+.claude/settings.local.json

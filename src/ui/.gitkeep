@@ -1,0 +1,1 @@
+# HUD, menus, subtitles. Reads a state snapshot; emits intents. Never mutates game state.

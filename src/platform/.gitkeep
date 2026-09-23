@@ -1,0 +1,1 @@
+# Browser adapters behind interfaces: storage, pointer lock, rAF, fetch. The only layer allowed to touch browser APIs on behalf of core/ and game/.
