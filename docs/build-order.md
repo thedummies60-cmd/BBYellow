@@ -10,15 +10,19 @@ require building the whole structure before anything runs.
 
 | Step | Done when | Touches |
 |---|---|---|
-| Canvas + renderer | A cleared colored frame draws at 60 fps | `render/renderer.ts` |
-| Fixed loop | Stats overlay shows steady sim steps | `core/loop.ts` ✅ |
+| Engine primitives | Loop, clock, ECS, events, RNG, math — all unit-tested | `core/` ✅ |
 | Mode machine | Menu → playing → paused transitions hold | `game/mode.ts` ✅ |
+| Canvas + renderer | A cleared colored frame draws at 60 fps | `render/renderer.ts` |
 | A room | Boxes and a floor, lit | `render/`, `game/scenes/` |
 | Player + WASD | You move on a plane | `game/systems/movement.ts` |
 | Mouse look | Pointer lock, ESC pauses | `input/`, `platform/`, `render/camera.ts` |
 | Collision | Walls stop you; gravity; you can't fall through the floor | `game/systems/physics.ts` |
 
 At this point you have a first-person walker, which is most of a horror game's verbs.
+
+`core/` is done, so the next unbuilt step is the renderer. Everything above it composes
+already — `tests/integration/simulation.test.ts` runs a sanity-drain system through the
+loop, the clock, the world and the event bus with no canvas involved.
 
 ## 2. It has rules
 

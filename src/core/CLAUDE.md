@@ -18,12 +18,35 @@ The bottom of the stack. Loop, ECS, math, RNG, events, time.
 
 | File | Responsibility |
 |---|---|
-| `loop.ts` | Fixed-timestep accumulator; emits `fixedUpdate(dt)` and `render(alpha)` |
-| `world.ts` | ECS world: entity ids, component storage, system registration |
+| `loop.ts` | Fixed-timestep accumulator; clamps long gaps, returns the render `alpha` |
+| `world.ts` | ECS world: generational entity handles, component stores, queries |
 | `events.ts` | Typed event bus. The only sanctioned cross-layer channel |
 | `rng.ts` | Seeded PRNG. **The only place `Math.random()` may appear** |
-| `math.ts` | Vectors, quaternions, easing — allocation-free, out-param style |
-| `clock.ts` | Sim time, pause, timescale. All gameplay timing reads this |
+| `math.ts` | Vec3 and scalar helpers — allocation-free, out-param style |
+| `clock.ts` | Sim time, pause, timescale, and the timers that replace `setTimeout` |
+| `index.ts` | The public surface. Other layers import `@core`, not deep paths |
+
+All six are implemented and unit-tested. Two details worth knowing before you use them:
+
+- **Entity handles carry a generation.** A destroyed handle never addresses whatever
+  entity later takes its index — `world.alive()` rejects it instead. Recycled bare
+  indices are how the stalker ends up taking a door's damage.
+- **Component stores live on the world, not the descriptor.** `defineComponent` is safe
+  at module scope precisely because it holds no data; two worlds never share state, and
+  tests build a fresh world per case.
+
+## Queries
+
+Build a query once at system init and iterate it by index every frame:
+
+```ts
+const movers = world.query(Transform, Velocity);   // at init
+for (let i = 0; i < movers.size; i++) { ... }      // every frame, allocates nothing
+```
+
+The result list is rebuilt only when the world's structure changes — creating or
+destroying an entity, adding or removing a component. Mutating component *data* is not a
+structural change, so the common case rebuilds nothing.
 
 ## Adding to core
 
