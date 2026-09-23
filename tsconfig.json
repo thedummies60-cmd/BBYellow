@@ -37,6 +37,7 @@
       "@render": ["src/render/index.ts"],
       "@game": ["src/game/index.ts"],
       "@ui": ["src/ui/index.ts"],
+      "@input": ["src/input/index.ts"],
       "@app": ["src/app/index.ts"],
       "@app/*": ["src/app/*"]
     }

@@ -15,21 +15,23 @@ require building the whole structure before anything runs.
 | Canvas + renderer | A lit room draws, resizes and tears down cleanly | `render/renderer.ts` ✅ |
 | Composition root | Simulation state reaches the scene, interpolated | `app/bootstrap.ts` ✅ |
 | Stats overlay | `?stats=1` reports frame time, draw calls, steps | `ui/stats-overlay.ts` ✅ |
-| A real room | Level geometry from `game/scenes/`, not hand-built | `render/`, `game/scenes/` |
-| Player + WASD | You move on a plane | `game/systems/movement.ts` |
-| Mouse look | Pointer lock, ESC pauses | `input/`, `platform/`, `render/camera.ts` |
-| Collision | Walls stop you; gravity; you can't fall through the floor | `game/systems/physics.ts` |
+| A real room | Level geometry authored as data in `game/scenes/` | `render/level-view.ts` ✅ |
+| Player + WASD | You move, sprint, crouch and jump | `game/systems/movement.ts` ✅ |
+| Mouse look | Pointer lock, click to play, ESC pauses | `input/`, `platform/`, `render/camera.ts` ✅ |
+| Collision | Walls stop you; gravity; you can't fall through the floor | `game/collision.ts` ✅ |
 
-At this point you have a first-person walker, which is most of a horror game's verbs.
+**You now have a first-person walker**, which is most of a horror game's verbs. Step 2
+is where it becomes a game rather than a tech demo.
 
-`core/`, the renderer and the composition root are done: `npm run dev` shows a lit room
-with an interpolated prop, and `npm run smoke` verifies it in a real browser. The next
-unbuilt step is the player — movement, then mouse look, then collision.
+`npm run dev` drops you in a lit room you can walk around. The next unbuilt step is
+interaction — looking at a door and opening it — which is what turns a walker into a game.
 
-Two harnesses back the work. `tests/integration/simulation.test.ts` runs a sanity-drain
-system through the loop, clock, world and event bus with no canvas involved;
-`scripts/smoke.mjs` drives a production build in Chromium, from a subdirectory, and
-checks the things only a browser can answer.
+Two harnesses back the work. The unit and integration tests cover the controller
+completely without a browser: walk speed, diagonal normalization, air control, pitch
+clamping, wall sliding, and staying inside the room from any heading. `scripts/smoke.mjs`
+then drives a production build in Chromium — from a subdirectory, under software WebGL —
+engaging real pointer lock, pressing W, and checking the player moved and could not leave
+the room.
 
 ## 2. It has rules
 

@@ -3,5 +3,7 @@
 export { createRenderer } from './renderer.js';
 export type { Renderer, RendererOptions, RendererStats } from './renderer.js';
 
-export { createDebugRoom } from './debug-room.js';
-export type { DebugRoom } from './debug-room.js';
+export { createLevelView } from './level-view.js';
+export type { LevelView } from './level-view.js';
+
+export { applyCameraPose } from './camera.js';

@@ -150,7 +150,10 @@ try {
   });
 
   check('seed came from the URL', stats.seed === 12345, String(stats.seed));
-  check('mode is playing', stats.mode === 'playing', stats.mode);
+  // Pointer lock needs a gesture, so the game waits in Paused behind the prompt.
+  check('waits for the player behind a prompt', stats.mode === 'paused', stats.mode);
+  const promptText = await page.locator('#prompt').textContent();
+  check('prompt explains the controls', (promptText ?? '').includes('WASD'), promptText ?? '');
   check('frames are being drawn', stats.drawCalls > 0, `${stats.drawCalls} draw calls`);
   check('triangles submitted', stats.triangles > 0, `${stats.triangles} tris`);
   check(
@@ -158,7 +161,7 @@ try {
     stats.drawCalls <= 300,
     `${stats.drawCalls} (budget 300)`,
   );
-  check('simulation stepped', stats.entities === 1, `${stats.entities} entities`);
+  check('the player exists', stats.entities === 1, `${stats.entities} entities`);
   // Software WebGL renders slower than the clamp, so dropping time here is the clamp
   // doing its job. What matters is that it bounds the damage rather than letting the
   // simulation run away (CLAUDE.md §3).
@@ -169,10 +172,48 @@ try {
   );
   check('steps per frame within the catch-up cap', stats.steps <= 5, String(stats.steps));
 
-  // Taken while the app is running: a screenshot after teardown shows a dead canvas
-  // and proves nothing.
+  // ---- the player ------------------------------------------------------------
+  // A Playwright click is a real user gesture, which is what pointer lock requires.
+  await page.locator('#prompt').click();
+  await page.waitForTimeout(300);
+
+  const locked = await page.evaluate(() => document.pointerLockElement !== null);
+  check('pointer lock engaged on click', locked);
+
+  const afterLock = await page.evaluate(() =>
+    Reflect.get(window, '__bbyellow').debug.mode.current,
+  );
+  check('resumes playing once captured', afterLock === 'playing', afterLock);
+
+  const start = await page.evaluate(() => Reflect.get(window, '__bbyellow').debug.position());
+
+  await page.keyboard.down('KeyW');
+  await page.waitForTimeout(700);
+  await page.keyboard.up('KeyW');
+  await page.waitForTimeout(150);
+
+  const walked = await page.evaluate(() => Reflect.get(window, '__bbyellow').debug.position());
+  const forward = start.z - walked.z; // spawn faces -Z
+  check('W walks forward', forward > 0.5, `moved ${forward.toFixed(2)}m`);
+  check('stays on the floor while walking', Math.abs(walked.y) < 0.01, `y=${walked.y}`);
+
+  // Taken while running and after the player has moved: a screenshot from the spawn
+  // point, or one taken after teardown, proves much less.
   await page.screenshot({ path: 'smoke-screenshot.png' });
   console.log('  → screenshot written to smoke-screenshot.png');
+
+  // Walk into the far wall and stay inside the room.
+  await page.keyboard.down('KeyW');
+  await page.waitForTimeout(2500);
+  await page.keyboard.up('KeyW');
+  await page.waitForTimeout(200);
+
+  const pressed = await page.evaluate(() => Reflect.get(window, '__bbyellow').debug.position());
+  check(
+    'cannot walk through the level geometry',
+    Math.abs(pressed.x) < 6 && Math.abs(pressed.z) < 8,
+    `at ${pressed.x.toFixed(2)}, ${pressed.z.toFixed(2)}`,
+  );
 
   const overlayText = await page.locator('#stats').textContent();
   check('stats overlay rendered', (overlayText ?? '').includes('fps'), overlayText?.slice(0, 20));

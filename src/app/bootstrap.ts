@@ -14,16 +14,33 @@ import {
   defineComponent,
   lerp,
   randomSeed,
+  vec3,
 } from '@core';
 import type { Entity } from '@core';
-import { createFrameDriver, createViewport, createVisibilityWatcher } from '@platform';
-import { createDebugRoom, createRenderer } from '@render';
-import { createModeMachine, createSpinSystem, GameMode } from '@game';
-import type { Spin } from '@game';
-import { createStatsOverlay } from '@ui';
+import {
+  createFrameDriver,
+  createPointerLock,
+  createViewport,
+  createVisibilityWatcher,
+} from '@platform';
+import { applyCameraPose, createLevelView, createRenderer } from '@render';
+import { createInputDevice } from '@input';
+import {
+  collidersFromLevel,
+  createModeMachine,
+  createMovementSystem,
+  DEBUG_LEVEL,
+  GameMode,
+  MOVEMENT,
+} from '@game';
+import type { Player, Transform, Velocity } from '@game';
+import { createPrompt, createStatsOverlay } from '@ui';
+import { IDLE_INPUT } from '@shared/input.js';
 import { createFrameStats } from '@shared/stats.js';
 
-const Spin = defineComponent<Spin>('Spin');
+const Transform = defineComponent<Transform>('Transform');
+const Velocity = defineComponent<Velocity>('Velocity');
+const Player = defineComponent<Player>('Player');
 
 /** Smoothing for the displayed frame rate. Display only — nothing reads it. */
 const FPS_SMOOTHING = 0.9;
@@ -42,6 +59,8 @@ export interface App {
     readonly seed: number;
     readonly mode: ReturnType<typeof createModeMachine>;
     readonly stats: ReturnType<typeof createFrameStats>;
+    readonly player: Entity;
+    position(): { x: number; y: number; z: number };
   };
 }
 
@@ -54,6 +73,7 @@ export interface AppOptions {
 export function createApp(canvas: HTMLCanvasElement, options: AppOptions = {}): App {
   const seed = options.seed ?? randomSeed();
   const disposers: (() => void)[] = [];
+  const level = DEBUG_LEVEL;
 
   // ---- simulation -------------------------------------------------------------
   const world = createWorld();
@@ -61,6 +81,7 @@ export function createApp(canvas: HTMLCanvasElement, options: AppOptions = {}): 
   const bus = createEventBus<GameEvents>();
   const rng = createRng(seed);
   const mode = createModeMachine();
+  const colliders = collidersFromLevel(level);
 
   disposers.push(() => {
     clock.clearTimers();
@@ -68,26 +89,41 @@ export function createApp(canvas: HTMLCanvasElement, options: AppOptions = {}): 
     world.clear();
   });
 
-  const updateSpin = createSpinSystem(world, Spin);
-
-  const spinner = world.create();
-  world.add(spinner, Spin, {
-    angle: rng.range(0, Math.PI * 2),
-    previousAngle: 0,
-    speed: 0.6,
+  const player = world.create();
+  world.add(player, Transform, {
+    position: vec3(level.spawn.position.x, level.spawn.position.y, level.spawn.position.z),
+    previousPosition: vec3(
+      level.spawn.position.x,
+      level.spawn.position.y,
+      level.spawn.position.z,
+    ),
+    yaw: level.spawn.yaw,
+    previousYaw: level.spawn.yaw,
+    pitch: 0,
+    previousPitch: 0,
   });
+  world.add(player, Velocity, { linear: vec3() });
+  world.add(player, Player, {
+    grounded: false,
+    crouching: false,
+    eyeHeight: MOVEMENT.eyeHeight,
+    previousEyeHeight: MOVEMENT.eyeHeight,
+  });
+
+  const updateMovement = createMovementSystem(
+    world,
+    { Transform, Velocity, Player },
+    MOVEMENT,
+    colliders,
+  );
 
   // ---- presentation -----------------------------------------------------------
   const renderer = createRenderer(canvas);
   disposers.push(() => renderer.dispose());
 
-  const room = createDebugRoom();
-  renderer.scene.add(room.root);
-  disposers.push(() => room.dispose());
-
-  // Eye height. Becomes the player rig once movement exists.
-  renderer.camera.position.set(0, 1.7, 3.5);
-  renderer.camera.lookAt(0, 1.3, -3);
+  const levelView = createLevelView(level);
+  renderer.scene.add(levelView.root);
+  disposers.push(() => levelView.dispose());
 
   const viewport = createViewport(canvas, (size) => renderer.resize(size));
   disposers.push(() => viewport.dispose());
@@ -95,30 +131,72 @@ export function createApp(canvas: HTMLCanvasElement, options: AppOptions = {}): 
   const overlay = options.showStats === true ? createStatsOverlay() : null;
   if (overlay !== null) disposers.push(() => overlay.dispose());
 
+  const prompt = createPrompt();
+  disposers.push(() => prompt.dispose());
+
   const stats = createFrameStats();
+
+  // ---- input ------------------------------------------------------------------
+  const pointerLock = createPointerLock(canvas, {
+    onChange: (locked) => {
+      if (locked) {
+        prompt.hide();
+        mode.enter(GameMode.Playing);
+      } else {
+        // Losing lock is the only pause signal that survives alt-tab, where a keyboard
+        // handler never fires (docs/browser-integration.md).
+        input.clear();
+        mode.enter(GameMode.Paused);
+        prompt.show('Paused', 'Click to resume · ESC to release the cursor');
+      }
+    },
+    onError: () => {
+      prompt.show('Click to play', 'Your browser declined pointer lock — try again');
+    },
+  });
+  disposers.push(() => pointerLock.dispose());
+
+  const input = createInputDevice(canvas, {
+    lookSensitivity: MOVEMENT.lookSensitivity,
+    shouldCaptureLook: () => pointerLock.locked,
+  });
+  disposers.push(() => input.dispose());
+
+  disposers.push(prompt.onActivate(() => pointerLock.request()));
+  const handleCanvasClick = (): void => pointerLock.request();
+  canvas.addEventListener('click', handleCanvasClick);
+  disposers.push(() => canvas.removeEventListener('click', handleCanvasClick));
 
   // ---- frame ------------------------------------------------------------------
   let lastFrameSeconds = -1;
 
   const loop = createLoop((dt) => {
     clock.advance(dt);
-    updateSpin(dt);
+    // Input is only consumed while captured; otherwise the player drifts while the
+    // pause menu is open.
+    updateMovement(dt, pointerLock.locked ? input.snapshot : IDLE_INPUT);
   });
 
   /**
    * Copies interpolated simulation state onto the scene — the one job that needs both
    * `game/` and `render/`, and the reason this layer exists.
    *
-   * Allocation-free: one query, index loop, in-place writes (CLAUDE.md §3).
+   * Allocation-free: direct component reads and in-place writes (CLAUDE.md §3).
    */
-  const spinQuery = world.query(Spin);
   const applyToScene = (alpha: number): void => {
-    const entities = spinQuery.entities;
-    for (let i = 0; i < entities.length; i++) {
-      const spin = world.get(entities[i] as Entity, Spin);
-      if (spin === undefined) continue;
-      room.spinner.rotation.y = lerp(spin.previousAngle, spin.angle, alpha);
-    }
+    const transform = world.get(player, Transform);
+    const state = world.get(player, Player);
+    if (transform === undefined || state === undefined) return;
+
+    applyCameraPose(
+      renderer.camera,
+      lerp(transform.previousPosition.x, transform.position.x, alpha),
+      lerp(transform.previousPosition.y, transform.position.y, alpha),
+      lerp(transform.previousPosition.z, transform.position.z, alpha),
+      lerp(transform.previousYaw, transform.yaw, alpha),
+      lerp(transform.previousPitch, transform.pitch, alpha),
+      lerp(state.previousEyeHeight, state.eyeHeight, alpha),
+    );
   };
 
   const driver = createFrameDriver((nowSeconds) => {
@@ -139,6 +217,8 @@ export function createApp(canvas: HTMLCanvasElement, options: AppOptions = {}): 
     const simEndMs = performance.now();
 
     applyToScene(alpha);
+    // Look deltas are consumed once per frame, after the systems have read them.
+    input.endFrame();
 
     const renderStartMs = performance.now();
     renderer.render();
@@ -156,7 +236,8 @@ export function createApp(canvas: HTMLCanvasElement, options: AppOptions = {}): 
     // fps comes from the frame interval, which is the number that answers "are we
     // hitting 60?" — CPU work per frame does not, since it excludes GPU and idle time.
     const instantFps = intervalMs > 0 ? 1000 / intervalMs : 0;
-    stats.fps = stats.fps === 0 ? instantFps : stats.fps * FPS_SMOOTHING + instantFps * (1 - FPS_SMOOTHING);
+    stats.fps =
+      stats.fps === 0 ? instantFps : stats.fps * FPS_SMOOTHING + instantFps * (1 - FPS_SMOOTHING);
 
     overlay?.update(stats, renderEndMs);
   });
@@ -164,24 +245,44 @@ export function createApp(canvas: HTMLCanvasElement, options: AppOptions = {}): 
 
   // A hidden tab stops firing rAF; the stalker must not keep hunting meanwhile.
   const visibility = createVisibilityWatcher((visible) => {
-    if (!visible) mode.enter(GameMode.Paused);
-    // Resuming is the player's call — see the re-lock rules in
-    // docs/browser-integration.md. Re-anchor so the hidden gap is not simulated.
-    else loop.reset(performance.now() / 1000);
+    if (!visible) {
+      pointerLock.release();
+      input.clear();
+    } else {
+      // Re-anchor so the hidden gap is not simulated.
+      loop.reset(performance.now() / 1000);
+    }
   });
   disposers.push(() => visibility.dispose());
 
   disposers.push(mode.onChange((to, from) => bus.emit('ModeChanged', { to, from })));
 
   return {
-    debug: { seed, mode, stats },
+    debug: {
+      seed,
+      mode,
+      stats,
+      player,
+      position(): { x: number; y: number; z: number } {
+        const transform = world.get(player, Transform);
+        return transform === undefined
+          ? { x: NaN, y: NaN, z: NaN }
+          : { x: transform.position.x, y: transform.position.y, z: transform.position.z };
+      },
+    },
 
     start(): void {
-      // Nothing to stream yet, so Loading passes straight through.
+      // Nothing to stream yet, so Loading passes straight through. The player stays in
+      // Paused until they click, because pointer lock needs that gesture.
       mode.enter(GameMode.Loading);
       mode.enter(GameMode.Playing);
+      mode.enter(GameMode.Paused);
+      prompt.show('Click to play', 'WASD to move · mouse to look · ESC to release');
       loop.reset(performance.now() / 1000);
       driver.start();
+      // rng is reserved for encounter selection; touching it here keeps the seed
+      // meaningful from the first frame.
+      void rng;
     },
 
     stop(): void {

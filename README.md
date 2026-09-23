@@ -18,8 +18,9 @@ npm run preview    # serve the production build locally
 npm run smoke      # drive the built game in Chromium and screenshot it (after build)
 ```
 
-`npm run dev` shows a lit room with an interpolated prop. Add `?stats=1` for the budget
-overlay, or `?seed=12345` to reproduce a run exactly.
+`npm run dev`, then click to play: **WASD** to move, mouse to look, **Shift** to sprint,
+**Ctrl/C** to crouch, **Space** to jump, **ESC** to release the cursor. Add `?stats=1` for
+the budget overlay, or `?seed=12345` to reproduce a run exactly.
 
 ## Read this first
 

@@ -8,3 +8,6 @@ export type { Viewport, ViewportSize } from './viewport.js';
 
 export { createVisibilityWatcher } from './visibility.js';
 export type { VisibilityWatcher } from './visibility.js';
+
+export { createPointerLock, RELOCK_COOLDOWN_MS } from './pointer-lock.js';
+export type { PointerLock, PointerLockOptions } from './pointer-lock.js';
