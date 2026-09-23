@@ -3,6 +3,9 @@
 A 3D first-person horror game that runs in the browser and ships as a **static bundle**
 to a third-party webserver.
 
+You wake in a basement. There is a key somewhere in the back rooms, a locked door behind
+you, and something walking the corridor in between. Your flashlight will not last.
+
 ## Quick start
 
 ```bash
@@ -18,9 +21,22 @@ npm run preview    # serve the production build locally
 npm run smoke      # drive the built game in Chromium and screenshot it (after build)
 ```
 
-`npm run dev`, then click to play: **WASD** to move, mouse to look, **Shift** to sprint,
-**Ctrl/C** to crouch, **Space** to jump, **ESC** to release the cursor. Add `?stats=1` for
-the budget overlay, or `?seed=12345` to reproduce a run exactly.
+`npm run dev`, then click to play.
+
+**Find the key. Get out. Don't get caught.**
+
+| | |
+|---|---|
+| **WASD** | move |
+| **mouse** | look |
+| **Shift** | run — loud, it hears you from twice as far |
+| **Ctrl / C** | crouch — slow, and silent |
+| **F** | flashlight — safety, but the battery is finite |
+| **E** | use what you are looking at |
+| **ESC** | release the cursor |
+
+Add `?stats=1` for the budget overlay, or `?seed=12345` to reproduce a run exactly — the
+seed is printed on the death screen, so a bug report is one number.
 
 ## Read this first
 

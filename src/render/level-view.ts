@@ -22,6 +22,10 @@ import type { LevelData } from '@shared/level.js';
 
 export interface LevelView {
   readonly root: Object3D;
+  /** Hides an opened door or a taken pickup. Unknown ids are ignored. */
+  setUsed(id: string): void;
+  /** Pulses a pickup so it reads as takeable in a dark room. */
+  update(elapsedSeconds: number): void;
   dispose(): void;
 }
 
@@ -91,12 +95,76 @@ export function createLevelView(level: LevelData): LevelView {
     disposers.push(() => light.dispose());
   }
 
+  // --- interactables -------------------------------------------------------
+  const byId = new Map<string, Object3D>();
+  const pickups: Mesh[] = [];
+
+  for (const spec of level.interactables) {
+    const group = new Group();
+
+    if (spec.blocks !== undefined) {
+      const geometry = new BoxGeometry(spec.blocks.size.x, spec.blocks.size.y, spec.blocks.size.z);
+      const material = new MeshStandardMaterial({
+        color: spec.blocks.color ?? 0x6b4f33,
+        roughness: 0.85,
+      });
+      disposers.push(() => {
+        geometry.dispose();
+        material.dispose();
+      });
+      const slab = new Mesh(geometry, material);
+      slab.position.set(spec.blocks.center.x, spec.blocks.center.y, spec.blocks.center.z);
+      slab.castShadow = true;
+      slab.receiveShadow = true;
+      group.add(slab);
+    }
+
+    if (spec.kind === 'pickup') {
+      const geometry = new BoxGeometry(0.16, 0.06, 0.3);
+      // Emissive, because a prop the player must find cannot rely on a light reaching
+      // it — an unlit key in an unlit room is a dead end, not a puzzle.
+      const material = new MeshStandardMaterial({
+        color: 0xd8c48a,
+        emissive: 0xd8c48a,
+        emissiveIntensity: 0.6,
+        roughness: 0.4,
+        metalness: 0.6,
+      });
+      disposers.push(() => {
+        geometry.dispose();
+        material.dispose();
+      });
+      const mesh = new Mesh(geometry, material);
+      mesh.position.set(spec.position.x, spec.position.y, spec.position.z);
+      group.add(mesh);
+      pickups.push(mesh);
+    }
+
+    byId.set(spec.id, group);
+    root.add(group);
+  }
+
   const ambient = new AmbientLight(level.ambient.color, level.ambient.intensity);
   root.add(ambient);
   disposers.push(() => ambient.dispose());
 
   return {
     root,
+
+    setUsed(id: string): void {
+      const object = byId.get(id);
+      if (object !== undefined) object.visible = false;
+    },
+
+    update(elapsedSeconds: number): void {
+      for (let i = 0; i < pickups.length; i++) {
+        const mesh = pickups[i] as Mesh;
+        if (!mesh.visible) continue;
+        mesh.rotation.y = elapsedSeconds * 0.8;
+        mesh.position.y += Math.sin(elapsedSeconds * 2) * 0.0008;
+      }
+    },
+
     dispose(): void {
       root.removeFromParent();
       root.clear();

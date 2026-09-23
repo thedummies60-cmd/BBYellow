@@ -1,1 +1,0 @@
-# Shared material factories. Instances are shared, never cloned per object (draw-call budget).

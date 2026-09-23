@@ -92,6 +92,24 @@ export function collidersFromLevel(level: LevelData): Aabb[] {
   return boxes;
 }
 
+/**
+ * Makes a collider stop colliding, in place.
+ *
+ * Collapsed to a degenerate box rather than spliced out, so every index already handed
+ * to an interactable stays valid. `overlaps` uses strict comparisons, so a zero-volume
+ * box can never intersect anything.
+ */
+export function disableCollider(boxes: Aabb[], index: number): void {
+  const box = boxes[index];
+  if (box === undefined) return;
+  box.minX = 0;
+  box.maxX = 0;
+  box.minY = 0;
+  box.maxY = 0;
+  box.minZ = 0;
+  box.maxZ = 0;
+}
+
 /** Scratch, reused every call — this runs per entity per frame (CLAUDE.md §3). */
 const probe: Aabb = aabb();
 const step: Vec3 = { x: 0, y: 0, z: 0 };

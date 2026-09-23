@@ -23,8 +23,8 @@ require building the whole structure before anything runs.
 **You now have a first-person walker**, which is most of a horror game's verbs. Step 2
 is where it becomes a game rather than a tech demo.
 
-`npm run dev` drops you in a lit room you can walk around. The next unbuilt step is
-interaction — looking at a door and opening it — which is what turns a walker into a game.
+`npm run dev` drops you into a playable demo: a basement with a key to find, a door to
+escape through, and something walking the corridor between them.
 
 Two harnesses back the work. The unit and integration tests cover the controller
 completely without a browser: walk speed, diagonal normalization, air control, pitch
@@ -37,10 +37,10 @@ the room.
 
 | Step | Done when |
 |---|---|
-| Interaction | Look at a door, press E, it opens |
-| Inventory | Pick up and carry an item |
-| Flashlight | A light follows the camera, with a battery drain rate in config |
-| Sanity | A value that drains in darkness and recovers in light |
+| Interaction | Look at a door, press E, it opens | ✅ |
+| Inventory | Pick up and carry an item | ✅ |
+| Flashlight | A light follows the camera, with a battery drain rate in config | ✅ |
+| Sanity | A value that drains in darkness and recovers in light | ✅ |
 | Save / load | State round-trips through `localStorage` and survives a reload |
 
 Every one of these is testable headless. If it isn't, it has leaked into `render/`.
@@ -49,11 +49,15 @@ Every one of these is testable headless. If it isn't, it has leaked into `render
 
 | Step | Done when |
 |---|---|
-| Ambient audio | Room tone, footsteps on varying surfaces |
-| The stalker | Patrols, hears you, searches, loses you |
+| Ambient audio | Room tone, footsteps, positional cues | ✅ |
+| The stalker | Patrols, hears you, searches, loses you | ✅ |
+| HUD + subtitles | Battery, composure, and every audio cue captioned | ✅ |
+| Screens | Click-to-play, pause, death, escape — through the mode machine | ✅ |
 | Encounters | Scripted beats fire from config, reproducible from a seed |
-| HUD + subtitles | Health, sanity, and every audio cue captioned |
-| Menus | Title, pause, settings, death — all through the mode machine |
+| Settings | Sensitivity, subtitles, motion and photosensitivity options |
+
+**The demo is playable here.** Find the key, escape the basement, do not get caught.
+What remains in this section is depth, not viability.
 
 ## 4. It ships
 

@@ -38,6 +38,7 @@
       "@game": ["src/game/index.ts"],
       "@ui": ["src/ui/index.ts"],
       "@input": ["src/input/index.ts"],
+      "@audio": ["src/audio/index.ts"],
       "@app": ["src/app/index.ts"],
       "@app/*": ["src/app/*"]
     }

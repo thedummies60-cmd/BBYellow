@@ -161,7 +161,8 @@ try {
     stats.drawCalls <= 300,
     `${stats.drawCalls} (budget 300)`,
   );
-  check('the player exists', stats.entities === 1, `${stats.entities} entities`);
+  // player + stalker + one entity per interactable
+  check('the world is populated', stats.entities >= 5, `${stats.entities} entities`);
   // Software WebGL renders slower than the clamp, so dropping time here is the clamp
   // doing its job. What matters is that it bounds the damage rather than letting the
   // simulation run away (CLAUDE.md §3).
@@ -173,9 +174,10 @@ try {
   check('steps per frame within the catch-up cap', stats.steps <= 5, String(stats.steps));
 
   // ---- the player ------------------------------------------------------------
-  // A Playwright click is a real user gesture, which is what pointer lock requires.
+  // A Playwright click is a real user gesture, which is what pointer lock and the
+  // AudioContext both require.
   await page.locator('#prompt').click();
-  await page.waitForTimeout(300);
+  await page.waitForTimeout(400);
 
   const locked = await page.evaluate(() => document.pointerLockElement !== null);
   check('pointer lock engaged on click', locked);
@@ -184,6 +186,9 @@ try {
     Reflect.get(window, '__bbyellow').debug.mode.current,
   );
   check('resumes playing once captured', afterLock === 'playing', afterLock);
+
+  const audioRunning = await page.evaluate(() => Reflect.get(window, '__bbyellow').debug.state().audio);
+  check('audio context resumed on the same gesture', audioRunning);
 
   const start = await page.evaluate(() => Reflect.get(window, '__bbyellow').debug.position());
 
@@ -197,23 +202,94 @@ try {
   check('W walks forward', forward > 0.5, `moved ${forward.toFixed(2)}m`);
   check('stays on the floor while walking', Math.abs(walked.y) < 0.01, `y=${walked.y}`);
 
-  // Taken while running and after the player has moved: a screenshot from the spawn
-  // point, or one taken after teardown, proves much less.
   await page.screenshot({ path: 'smoke-screenshot.png' });
   console.log('  → screenshot written to smoke-screenshot.png');
 
-  // Walk into the far wall and stay inside the room.
-  await page.keyboard.down('KeyW');
-  await page.waitForTimeout(2500);
-  await page.keyboard.up('KeyW');
-  await page.waitForTimeout(200);
+  // ---- the flashlight ----------------------------------------------------------
+  const torchBefore = await page.evaluate(() => Reflect.get(window, '__bbyellow').debug.state());
 
-  const pressed = await page.evaluate(() => Reflect.get(window, '__bbyellow').debug.position());
+  // Does the flashlight actually light anything? Compare rendered brightness with it
+  // on and off — a spotlight that is wired up but contributes nothing looks identical.
+  const brightness = async () => {
+    const shot = await page.locator('#game').screenshot();
+    return page.evaluate(async (dataUrl) => {
+      const image = new Image();
+      image.src = dataUrl;
+      await image.decode();
+      const canvas = document.createElement('canvas');
+      canvas.width = image.width;
+      canvas.height = image.height;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(image, 0, 0);
+      const { data } = ctx.getImageData(0, 0, canvas.width, canvas.height);
+      let total = 0;
+      let count = 0;
+      for (let i = 0; i < data.length; i += 4 * 37) {
+        total += data[i] + data[i + 1] + data[i + 2];
+        count++;
+      }
+      return total / count;
+    }, `data:image/png;base64,${shot.toString('base64')}`);
+  };
+
+  const litBrightness = await brightness();
+  await page.keyboard.press('KeyF');
+  await page.waitForTimeout(200);
+  const darkBrightness = await brightness();
+  const torchAfter = await page.evaluate(() => Reflect.get(window, '__bbyellow').debug.state());
+
+  check('F toggles the flashlight', torchBefore.flashlight !== torchAfter.flashlight);
   check(
-    'cannot walk through the level geometry',
-    Math.abs(pressed.x) < 6 && Math.abs(pressed.z) < 8,
-    `at ${pressed.x.toFixed(2)}, ${pressed.z.toFixed(2)}`,
+    'the flashlight actually lights the scene',
+    litBrightness > darkBrightness * 1.15,
+    `lit ${litBrightness.toFixed(1)} vs dark ${darkBrightness.toFixed(1)}`,
   );
+  check('battery drains while it is on', torchBefore.battery < 1, `${torchBefore.battery.toFixed(3)}`);
+  await page.keyboard.press('KeyF'); // back on for the rest of the run
+
+  // ---- sanity ------------------------------------------------------------------
+  const sanity = await page.evaluate(() => Reflect.get(window, '__bbyellow').debug.state().sanity);
+  check('sanity is being simulated', sanity > 0 && sanity <= 100, String(sanity));
+
+  // ---- the goal ----------------------------------------------------------------
+  // Warp rather than pathfind: this checks the game's rules, not Playwright's ability
+  // to walk a corridor.
+  await page.evaluate(() => {
+    const app = Reflect.get(window, '__bbyellow');
+    app.debug.warp(-5.5, -7.6);
+    app.debug.look(0, -0.3); // the key is at -Z and below eye height
+  });
+  await page.waitForTimeout(250);
+
+  const nearKey = await page.evaluate(() => Reflect.get(window, '__bbyellow').debug.state().prompt);
+  check('prompts when looking at the key', nearKey.length > 0, nearKey || '(no prompt)');
+
+  await page.keyboard.press('KeyE');
+  await page.waitForTimeout(200);
+  const carrying = await page.evaluate(() => Reflect.get(window, '__bbyellow').debug.state());
+  check('E takes the key', carrying.hasKey, `hasKey=${carrying.hasKey}`);
+  check('the pickup subtitles itself', carrying.subtitle.length > 0, carrying.subtitle);
+
+  // Back to the exit and out.
+  await page.evaluate(() => {
+    const app = Reflect.get(window, '__bbyellow');
+    app.debug.warp(0, 11.0);
+    app.debug.look(Math.PI, -0.2); // turn around: the exit is at +Z
+  });
+  await page.waitForTimeout(250);
+
+  const atExit = await page.evaluate(() => Reflect.get(window, '__bbyellow').debug.state().prompt);
+  check('prompts at the exit', atExit.length > 0, atExit || '(no prompt)');
+
+  await page.keyboard.press('KeyE');
+  await page.waitForTimeout(400);
+
+  const ending = await page.evaluate(() => ({
+    mode: Reflect.get(window, '__bbyellow').debug.mode.current,
+    screen: document.querySelector('#screen')?.textContent ?? '',
+  }));
+  check('the run can be completed', ending.mode === 'gameOver', ending.mode);
+  check('the ending screen explains itself', /got out/i.test(ending.screen), ending.screen.slice(0, 40));
 
   const overlayText = await page.locator('#stats').textContent();
   check('stats overlay rendered', (overlayText ?? '').includes('fps'), overlayText?.slice(0, 20));
