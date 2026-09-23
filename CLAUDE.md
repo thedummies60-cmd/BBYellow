@@ -31,6 +31,7 @@ Dependencies point **downward only**. A module may import from its own layer or 
 layer below it, never above.
 
 ```
+        app/           composition root: wires everything, owns teardown (ADR-0002)
         ui/            HUD, menus, subtitles — reads game state, never mutates it
         game/          rules: sanity, stalker AI, doors, inventory, scares
   ───────────────────────────────────────────────────────────────────────
@@ -60,6 +61,12 @@ piece belongs in a lower layer or the boundary is wrong.
 
 Cross-layer talk goes through the event bus (`core/events.ts`) or an explicit interface
 defined by the **lower** layer. Lower layers never import upward to "call back".
+
+**MUST**: wiring that needs two sibling layers — reading the world to drive the scene,
+most of all — lives in `app/`, the composition root. It may import anything; nothing may
+import it. It is the *only* place `game/` and `render/` meet, and it holds wiring only:
+a decision about what is true belongs in `game/`. A growing `app/` means something is in
+the wrong layer. `app/` may not import `three` either. See ADR-0002.
 
 ---
 

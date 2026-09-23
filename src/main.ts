@@ -6,6 +6,8 @@
  * readable message, never a black screen.
  */
 
+import { createApp } from '@app';
+
 interface Capability {
   readonly name: string;
   readonly check: () => boolean;
@@ -56,12 +58,28 @@ async function main(): Promise<void> {
     return;
   }
 
-  // TODO: bootstrap — build the world, start the loop.
-  //   const game = await createGame(canvas);
-  //   game.start();
-  //
-  // Wiring order is fixed by the layering in CLAUDE.md §2:
-  //   platform → core (world, loop) → render/audio/input → game systems → ui
+  const params = new URLSearchParams(window.location.search);
+  const seedParam = params.get('seed');
+  const showStats =
+    params.get('stats') === '1' || import.meta.env['VITE_DEBUG_OVERLAY'] === 'true';
+
+  try {
+    const app = createApp(canvas, {
+      showStats,
+      // A seed in the URL reproduces a run exactly (CLAUDE.md §3).
+      ...(seedParam !== null && seedParam !== '' ? { seed: Number(seedParam) } : {}),
+    });
+    app.start();
+
+    // Exposed for the smoke test and for reading the seed off a bug report.
+    Reflect.set(window, '__bbyellow', app);
+  } catch (error) {
+    console.error(error);
+    showFallback(
+      'The game could not start on this device. This usually means the graphics driver ' +
+        'refused a WebGL context.',
+    );
+  }
 }
 
 main().catch((error: unknown) => {

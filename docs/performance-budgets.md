@@ -51,10 +51,16 @@ npm run build && npm run preview     # always profile a production build
 
 Dev-mode numbers are meaningless — unminified, unbundled, with HMR overhead.
 
-1. Frame time: the in-game stats overlay (`?stats=1`).
+1. Frame time: the in-game stats overlay (`?stats=1`, or `npm run smoke` for a scripted
+   run). Read it correctly — `frame` is **CPU work on the main thread** (simulation +
+   scene update + draw submission), while `fps` comes from the frame interval and is what
+   tells you whether you are hitting 60. A low `frame` with a low `fps` means you are
+   GPU-bound, and no amount of optimizing systems will help.
 2. Allocation: DevTools → Performance → Memory. The sawtooth in the frame path must be
    flat. A rising baseline is a leak; a sawtooth is per-frame garbage. Both are bugs.
-3. GPU: Chrome tracing, or `EXT_disjoint_timer_query_webgl2` where available.
+3. GPU: Chrome tracing, or `EXT_disjoint_timer_query_webgl2` where available. The
+   overlay's `draw` figure is submission cost only — the GPU runs asynchronously, so it
+   cannot see actual execution time.
 4. Load: DevTools Network with throttling, cache disabled, from a served `dist/`.
 
 ## When you blow a budget

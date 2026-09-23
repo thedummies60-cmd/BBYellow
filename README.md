@@ -15,7 +15,11 @@ npm run dev        # http://localhost:5173
 npm run check      # typecheck + lint + layering rules + tests — run before every commit
 npm run build      # → dist/, ready to upload
 npm run preview    # serve the production build locally
+npm run smoke      # drive the built game in Chromium and screenshot it (after build)
 ```
+
+`npm run dev` shows a lit room with an interpolated prop. Add `?stats=1` for the budget
+overlay, or `?seed=12345` to reproduce a run exactly.
 
 ## Read this first
 
@@ -43,6 +47,7 @@ in — canvas → renderer → player → WASD → mouse look → collision → 
 
 ```
 src/
+  app/         composition root: wires the layers, owns teardown (ADR-0002)
   core/        loop · ECS · math · seeded RNG · events    pure, no DOM, no Three.js
   platform/    browser adapters: storage, pointer lock, rAF
   render/      Three.js lives here and nowhere else

@@ -46,6 +46,8 @@ export default tseslint.config(
     files: ['src/**/*.ts'],
     ignores: ['src/render/**/*.ts'],
     rules: {
+      // Applies to app/ too: the composition root talks to render/'s interface,
+      // it does not reach past it to the GPU (ADR-0002).
       'no-restricted-imports': [
         'error',
         {
@@ -87,6 +89,25 @@ export default tseslint.config(
         },
       ],
     },
+  },
+
+  {
+    /*
+     * The smoke script is a Node program whose `page.evaluate` callbacks are serialized
+     * and executed inside the browser, so browser globals here are correct — they are
+     * just not in this file's own runtime.
+     */
+    files: ['scripts/smoke.mjs'],
+    languageOptions: {
+      globals: {
+        console: 'readonly',
+        process: 'readonly',
+        window: 'readonly',
+        document: 'readonly',
+        Image: 'readonly',
+      },
+    },
+    rules: { 'no-console': 'off' },
   },
 
   {

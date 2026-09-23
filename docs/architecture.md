@@ -14,6 +14,8 @@ That is only possible if the simulation never touches the renderer. Hence the ha
 
 ```
 ┌──────────────────────────────────────────────┐
+│  app/         composition root · teardown    │  the only place game/ meets render/
+├──────────────────────────────────────────────┤
 │  ui/          HUD · menus · subtitles        │  reads state, emits intents
 ├──────────────────────────────────────────────┤
 │  game/        rules · AI · sanity · scares   │  authoritative. headless. testable.
@@ -42,7 +44,10 @@ rAF tick
   └─ ui/        reconcile from a state snapshot
 ```
 
-`alpha = accumulator / FIXED_DT`. The renderer interpolates; it never simulates. A
+`alpha = accumulator / FIXED_DT`. The renderer interpolates; it never simulates. The
+interpolation itself happens in `app/`, which blends each component's previous and
+current state onto the scene — hence the `previousAngle`/`angle` pairing you will see on
+any component that moves. A
 spiral-of-death guard caps catch-up iterations — a long stall drops sim time rather than
 freezing the tab.
 
@@ -56,6 +61,11 @@ identically with no subscribers at all — which is exactly how the headless tes
 
 **Sideways:** doesn't happen. If `audio/` needs something from `render/`, the shared
 concern belongs in a lower layer.
+
+**Between siblings that cannot see each other:** `app/`. Reading entity transforms out of
+the world and writing them onto meshes needs both `game/` and `render/`, and neither may
+import the other. That wiring — and only that wiring — lives in the composition root.
+See ADR-0002 for why the alternatives were rejected.
 
 ## Why ECS
 

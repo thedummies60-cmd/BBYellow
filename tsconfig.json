@@ -32,7 +32,13 @@
       "@input/*": ["src/input/*"],
       "@game/*": ["src/game/*"],
       "@ui/*": ["src/ui/*"],
-      "@shared/*": ["src/shared/*"]
+      "@shared/*": ["src/shared/*"],
+      "@platform": ["src/platform/index.ts"],
+      "@render": ["src/render/index.ts"],
+      "@game": ["src/game/index.ts"],
+      "@ui": ["src/ui/index.ts"],
+      "@app": ["src/app/index.ts"],
+      "@app/*": ["src/app/*"]
     }
   },
   "include": ["src", "tests", "scripts", "vite.config.ts"]

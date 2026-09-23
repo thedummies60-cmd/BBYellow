@@ -26,10 +26,12 @@ const ALLOWED = {
   input: ['shared', 'core', 'platform'],
   game: ['shared', 'core', 'platform', 'audio', 'input'],
   ui: ['shared', 'core', 'platform', 'game'],
+  // The composition root (ADR-0002). Reaches everything; nothing reaches it.
+  app: ['shared', 'core', 'platform', 'render', 'audio', 'input', 'game', 'ui'],
 };
 
 /** Layers that must stay free of Three.js. */
-const NO_THREE = ['shared', 'core', 'platform', 'audio', 'input', 'game', 'ui'];
+const NO_THREE = ['shared', 'core', 'platform', 'audio', 'input', 'game', 'ui', 'app'];
 
 /** Layers that must stay free of browser globals (pure, headless-testable). */
 const NO_DOM = ['core', 'game'];

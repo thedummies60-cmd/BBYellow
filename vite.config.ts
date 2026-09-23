@@ -21,6 +21,7 @@ export default defineConfig({
       '@game': r('./src/game'),
       '@ui': r('./src/ui'),
       '@shared': r('./src/shared'),
+      '@app': r('./src/app'),
     },
   },
 

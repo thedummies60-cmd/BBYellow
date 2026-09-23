@@ -4,6 +4,10 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>BBYellow</title>
+    <!-- Relative href: we may be served from a subdirectory (CLAUDE.md §7).
+         An explicit link also stops the browser probing /favicon.ico at the web root,
+         which 404s on every load when we are not at the root. -->
+    <link rel="icon" type="image/svg+xml" href="./favicon.svg" />
     <link rel="stylesheet" href="/styles/main.css" />
   </head>
   <body>

@@ -12,17 +12,24 @@ require building the whole structure before anything runs.
 |---|---|---|
 | Engine primitives | Loop, clock, ECS, events, RNG, math — all unit-tested | `core/` ✅ |
 | Mode machine | Menu → playing → paused transitions hold | `game/mode.ts` ✅ |
-| Canvas + renderer | A cleared colored frame draws at 60 fps | `render/renderer.ts` |
-| A room | Boxes and a floor, lit | `render/`, `game/scenes/` |
+| Canvas + renderer | A lit room draws, resizes and tears down cleanly | `render/renderer.ts` ✅ |
+| Composition root | Simulation state reaches the scene, interpolated | `app/bootstrap.ts` ✅ |
+| Stats overlay | `?stats=1` reports frame time, draw calls, steps | `ui/stats-overlay.ts` ✅ |
+| A real room | Level geometry from `game/scenes/`, not hand-built | `render/`, `game/scenes/` |
 | Player + WASD | You move on a plane | `game/systems/movement.ts` |
 | Mouse look | Pointer lock, ESC pauses | `input/`, `platform/`, `render/camera.ts` |
 | Collision | Walls stop you; gravity; you can't fall through the floor | `game/systems/physics.ts` |
 
 At this point you have a first-person walker, which is most of a horror game's verbs.
 
-`core/` is done, so the next unbuilt step is the renderer. Everything above it composes
-already — `tests/integration/simulation.test.ts` runs a sanity-drain system through the
-loop, the clock, the world and the event bus with no canvas involved.
+`core/`, the renderer and the composition root are done: `npm run dev` shows a lit room
+with an interpolated prop, and `npm run smoke` verifies it in a real browser. The next
+unbuilt step is the player — movement, then mouse look, then collision.
+
+Two harnesses back the work. `tests/integration/simulation.test.ts` runs a sanity-drain
+system through the loop, clock, world and event bus with no canvas involved;
+`scripts/smoke.mjs` drives a production build in Chromium, from a subdirectory, and
+checks the things only a browser can answer.
 
 ## 2. It has rules
 

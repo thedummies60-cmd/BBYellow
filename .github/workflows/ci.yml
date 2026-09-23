@@ -44,6 +44,13 @@ jobs:
           fi
           echo "No secret-shaped strings in dist/."
 
+      - name: Upload build for the smoke job
+        uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: dist
+          retention-days: 1
+
       - name: Assert relative asset paths
         run: |
           # Absolute paths break when served from a subdirectory. See docs/deployment.md.
@@ -52,3 +59,40 @@ jobs:
             exit 1
           fi
           echo "Asset paths are relative."
+
+  smoke:
+    # Unit tests cannot tell you a frame reached the screen. This drives the real build
+    # in a real browser, served from a subdirectory.
+    needs: check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          lfs: false
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - run: npm ci
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist
+
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+
+      - name: Smoke test
+        run: npm run smoke
+
+      - name: Upload screenshot
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: smoke-screenshot
+          path: smoke-screenshot.png
+          retention-days: 7
+          if-no-files-found: ignore
