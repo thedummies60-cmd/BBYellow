@@ -11,3 +11,6 @@ export type { VisibilityWatcher } from './visibility.js';
 
 export { createPointerLock, RELOCK_COOLDOWN_MS } from './pointer-lock.js';
 export type { PointerLock, PointerLockOptions } from './pointer-lock.js';
+
+export { gpuWarning, probeGpu } from './gpu.js';
+export type { GpuInfo } from './gpu.js';

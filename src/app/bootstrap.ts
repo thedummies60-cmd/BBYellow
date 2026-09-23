@@ -22,6 +22,8 @@ import {
   createPointerLock,
   createViewport,
   createVisibilityWatcher,
+  gpuWarning,
+  probeGpu,
 } from '@platform';
 import {
   applyCameraPose,
@@ -84,6 +86,8 @@ export interface App {
     readonly mode: ReturnType<typeof createModeMachine>;
     readonly stats: ReturnType<typeof createFrameStats>;
     position(): { x: number; y: number; z: number };
+    readonly gpu: string;
+    readonly softwareRendered: boolean;
     state(): {
       sanity: number;
       battery: number;
@@ -116,6 +120,11 @@ export function createApp(canvas: HTMLCanvasElement, options: AppOptions = {}): 
   const seed = options.seed ?? randomSeed();
   const disposers: (() => void)[] = [];
   const level = DEBUG_LEVEL;
+
+  // Probed before the renderer takes its own context, so the throwaway probe context
+  // cannot count against the browser's per-page limit at a bad moment.
+  const gpu = probeGpu();
+  const warning = gpuWarning(gpu);
 
   // ---- simulation -------------------------------------------------------------
   const world = createWorld();
@@ -546,6 +555,8 @@ export function createApp(canvas: HTMLCanvasElement, options: AppOptions = {}): 
       seed,
       mode,
       stats,
+      gpu: gpu.renderer,
+      softwareRendered: gpu.softwareRendered,
       position(): { x: number; y: number; z: number } {
         const transform = world.get(player, Transform);
         return transform === undefined
@@ -598,9 +609,11 @@ export function createApp(canvas: HTMLCanvasElement, options: AppOptions = {}): 
       mode.enter(GameMode.Playing);
       if (options.autoStart !== true) {
         mode.enter(GameMode.Paused);
+        const controls =
+          'WASD move · shift run · ctrl crouch · F flashlight · E use · ESC release';
         prompt.show(
           'Click to play',
-          'WASD move · shift run · ctrl crouch · F flashlight · E use · ESC release',
+          warning === '' ? controls : `${warning}\n\n${controls}`,
         );
       }
       loop.reset(performance.now() / 1000);

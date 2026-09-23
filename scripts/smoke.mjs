@@ -154,6 +154,26 @@ try {
   check('waits for the player behind a prompt', stats.mode === 'paused', stats.mode);
   const promptText = await page.locator('#prompt').textContent();
   check('prompt explains the controls', (promptText ?? '').includes('WASD'), promptText ?? '');
+
+  // This container has no GPU, so Chromium falls back to SwiftShader. That makes it the
+  // ideal place to prove the software-rendering detection fires — on real hardware these
+  // two checks assert the opposite, which is why the warning is asserted against the
+  // detected state rather than hardcoded either way.
+  const gpu = await page.evaluate(() => {
+    const app = Reflect.get(window, '__bbyellow');
+    return { renderer: app.debug.gpu, software: app.debug.softwareRendered };
+  });
+  check('the GPU is identified', gpu.renderer.length > 0, gpu.renderer || '(withheld)');
+  check(
+    'software rendering is detected here',
+    gpu.software,
+    `${gpu.renderer} → software=${gpu.software}`,
+  );
+  check(
+    'and the player is warned about it',
+    gpu.software === (promptText ?? '').includes('hardware acceleration'),
+    gpu.software ? 'warning shown' : 'no warning needed',
+  );
   check('frames are being drawn', stats.drawCalls > 0, `${stats.drawCalls} draw calls`);
   check('triangles submitted', stats.triangles > 0, `${stats.triangles} tris`);
   check(

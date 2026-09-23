@@ -41,7 +41,9 @@ export function createPrompt(parent: HTMLElement = document.body): Prompt {
   const title = document.createElement('p');
   title.style.cssText = 'margin:0;font-size:1.05rem;font-weight:600';
   const detail = document.createElement('p');
-  detail.style.cssText = 'margin:0;color:#9a9a9a;font-size:.86rem';
+  // pre-line: the detail may carry a warning and the control list as separate lines.
+  detail.style.cssText =
+    'margin:0;color:#9a9a9a;font-size:.86rem;white-space:pre-line;max-width:34rem';
   element.append(title, detail);
   parent.appendChild(element);
 
