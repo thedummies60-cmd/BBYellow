@@ -40,3 +40,6 @@ npm-debug.log*
 
 # Smoke-test evidence
 smoke-screenshot.png
+
+# Packaged builds for upload — a zipped dist/, so the same rule applies (CLAUDE.md §12)
+bbyellow-demo-*.zip
