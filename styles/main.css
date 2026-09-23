@@ -1,0 +1,54 @@
+/*
+ * Shell styles only: the canvas, the loading state, and the fallback message.
+ * In-game UI (HUD, menus, subtitles) styles live with their components in src/ui/.
+ */
+
+:root {
+  --bg: #000;
+  --fg: #b8b8b8;
+  --fg-strong: #e8e8e8;
+  color-scheme: dark;
+}
+
+html,
+body {
+  margin: 0;
+  height: 100%;
+  background: var(--bg);
+  color: var(--fg);
+  font: 14px/1.5 system-ui, -apple-system, sans-serif;
+  overflow: hidden;
+}
+
+#game {
+  display: block;
+  width: 100vw;
+  height: 100vh;
+  /* The canvas is the pointer-lock target; it must not show a text caret. */
+  cursor: default;
+  outline: none;
+}
+
+#game:not([data-pointer-locked='true']) {
+  cursor: pointer;
+}
+
+#fallback {
+  display: none;
+  padding: 2rem;
+  max-width: 40rem;
+}
+
+#fallback h1 {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--fg-strong);
+}
+
+/* Accessibility: respect the OS setting. See docs/horror-design-principles.md. */
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}

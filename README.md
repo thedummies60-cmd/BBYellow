@@ -32,7 +32,12 @@ The three rules that shape everything else:
 3. **Zero allocation in the frame path.** A GC pause during a chase reads as the game
    breaking.
 
-`npm run check:layers` enforces (1) and part of (2) in CI.
+`npm run check:layers` enforces (1) and part of (2) in CI, and `eslint.config.js` gives
+the same feedback in the editor.
+
+**New here?** [`docs/build-order.md`](docs/build-order.md) is the sequence to build this
+in — canvas → renderer → player → WASD → mouse look → collision → interaction → stalker
+→ UI → audio → menus → save. Each step leaves the game playable.
 
 ## Layout
 
@@ -46,6 +51,7 @@ src/
   game/        rules: sanity, stalker AI, interaction, encounters   headless
   ui/          HUD, menus, subtitles
   shared/      types and pure helpers
+styles/        shell CSS (canvas, loading, fallback); UI styles live with src/ui/
 assets/        source art (Git LFS) — processed, never shipped as-is
 public/        files copied verbatim into the build
 docs/          architecture, budgets, deployment, asset pipeline, ADRs
@@ -63,6 +69,8 @@ tests/         unit · integration · fixtures
 | [`docs/deployment.md`](docs/deployment.md) | Shipping to a host we don't control |
 | [`docs/asset-pipeline.md`](docs/asset-pipeline.md) | Source art → shipping assets |
 | [`docs/horror-design-principles.md`](docs/horror-design-principles.md) | Design constraints behind the rules |
+| [`docs/browser-integration.md`](docs/browser-integration.md) | Pointer lock, audio autoplay, context loss, and their gotchas |
+| [`docs/build-order.md`](docs/build-order.md) | The order to build this in, each step playable |
 | [`docs/adr/`](docs/adr/) | Architecture decision records |
 
 ## Assets

@@ -74,6 +74,13 @@ allows and interpolates between the last two sim states.
 read the fixed `dt`. Anything that scales with framerate is a bug — it makes the game
 easier on a fast machine and desyncs replays and tests.
 
+**MUST**: clamp the elapsed real time fed into the loop (`MAX_FRAME_TIME`, 100 ms) and
+cap catch-up steps per frame (`MAX_CATCH_UP_STEPS`, 5). A backgrounded tab, a breakpoint,
+or a long stall hands you a gap of *seconds*. Unclamped, that runs hundreds of steps at
+once: the player teleports, movement tunnels through walls, and every encounter timer
+fires at the same instant. Sim time falling behind wall time is the correct trade —
+nothing in a single-player game needs the two to agree. Both live in `core/loop.ts`.
+
 **MUST**: all randomness comes from a seeded PRNG in `core/rng.ts`. `Math.random()` is
 banned in `src/` outside that file. A scare sequence must be reproducible from a seed
 when we are chasing a bug report.
@@ -123,8 +130,9 @@ buried in systems.
 **MUST NOT**: magic numbers in systems. A number a designer would ever want to change
 belongs in config with a name.
 
-Config is typed and validated at load. A malformed config fails loudly at startup, not
-silently three rooms in.
+Config is typed and validated at load, and frozen (`Object.freeze`) so a system cannot
+quietly mutate shared balance data at runtime. A malformed config fails loudly at
+startup, not silently three rooms in.
 
 ---
 
@@ -134,9 +142,17 @@ silently three rooms in.
 - Systems are functions over state — `update(world, dt)` — not classes holding
   cross-system references.
 - Components are plain data. No methods, no inheritance.
-- **MUST NOT**: mutable module-level singletons holding game state. State lives in the
-  world/context object that gets passed down. A singleton is untestable and
-  un-restartable, and this game restarts a lot.
+- **MUST NOT**: mutable module-level singletons or module-scope `let` holding game
+  state. State lives in the world/context object that gets passed down. A singleton is
+  untestable and un-restartable, and this game restarts a lot.
+- **MUST**: one mode at a time, through the state machine in `game/mode.ts` — never a
+  set of independent booleans. `if (!gameOver && !paused && !menu && !loading)` is the
+  shape this rule exists to prevent: those flags admit states nobody designed (paused
+  while dead, a menu that is also playing), and every system has to re-derive the same
+  condition and eventually derives it differently. Illegal transitions are rejected at
+  the boundary. `mode.simulating` is the single answer to "is the game running" — a
+  system keeping its own pause flag is how a pause menu ends up stopping the player but
+  not the stalker.
 - Public surface of a directory goes through its `index.ts`. Importing a deep internal
   path from another directory is a boundary violation.
 - Filenames `kebab-case.ts`; types `PascalCase`; values `camelCase`; config constants
@@ -223,6 +239,8 @@ Before you call a change complete:
 - A "manager" or "utils" file that accumulates unrelated functions
 - Game logic reading from the DOM, or UI mutating game state directly
 - `setTimeout` for gameplay timing (use the sim clock — it pauses, it seeks, it tests)
+- Boolean soup in place of the mode machine; a system caching its own copy of "paused"
+- Tracking cursor coordinates for mouse look instead of pointer-lock deltas
 - `any`, `as` casts to silence the compiler, `@ts-ignore` without a reason comment
 - Fixes applied in the renderer for bugs that live in the simulation
 - Committed `dist/`, `node_modules/`, or unoptimized source art

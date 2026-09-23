@@ -15,7 +15,11 @@ Everything the game *is*, with nothing about how it looks or sounds.
 - **Fixed `dt` only.** Never the render delta. See root §3.
 - **All randomness via `core/rng.ts`.** A scare that cannot be reproduced from a seed
   cannot be debugged from a bug report.
-- **Tunables live in `config/`**, typed and validated. No magic numbers in systems.
+- **Tunables live in `config/`**, typed and validated, and frozen. No magic numbers in
+  systems.
+- **Mode comes from `mode.ts`**, never from a local boolean. Ask `mode.simulating`
+  rather than keeping your own `paused` flag — divergent pause flags are how the player
+  freezes while the stalker keeps hunting.
 
 ## Layout
 
@@ -26,6 +30,7 @@ Everything the game *is*, with nothing about how it looks or sounds.
 | `entities/` | Spawn functions — compose components, return an entity id |
 | `scenes/` | Level definition, spawn tables, teardown |
 | `config/` | Balance data. The file a designer edits without touching code |
+| `mode.ts` | The game mode state machine. Exactly one mode is active |
 
 ## Communicating outward
 

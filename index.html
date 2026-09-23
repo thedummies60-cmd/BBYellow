@@ -4,18 +4,12 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>BBYellow</title>
-    <style>
-      html, body { margin: 0; height: 100%; background: #000; color: #b8b8b8;
-        font: 14px/1.5 system-ui, sans-serif; overflow: hidden; }
-      #game { display: block; width: 100vw; height: 100vh; }
-      #fallback { display: none; padding: 2rem; max-width: 40rem; }
-      #fallback h1 { font-size: 1.1rem; font-weight: 600; color: #e8e8e8; }
-    </style>
+    <link rel="stylesheet" href="/styles/main.css" />
   </head>
   <body>
-    <canvas id="game"></canvas>
+    <canvas id="game" tabindex="0"></canvas>
     <!-- Shown when the browser can't run the game. Never leave the player a black screen. -->
-    <noscript><p style="padding:2rem">This game requires JavaScript.</p></noscript>
+    <noscript><p style="padding: 2rem">This game requires JavaScript.</p></noscript>
     <div id="fallback" role="alert"></div>
     <script type="module" src="/src/main.ts"></script>
   </body>
